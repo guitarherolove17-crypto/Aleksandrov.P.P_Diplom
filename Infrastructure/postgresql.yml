@@ -1,0 +1,26 @@
+---
+- hosts: "webservers"
+  vars:
+    ansible_ssh_user: user
+  become: true
+
+  pre_tasks:
+    - name: Validating the ssh port is open
+      wait_for:
+        host: "{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}"
+        port: 22
+        delay: 5
+        timeout: 300
+        state: started
+        search_regex: OpenSSH
+
+  tasks:
+  - name: "Install postgresql"
+    apt:
+      name: postgresql
+      state: present
+      update_cache: yes
+  - name: "Start postgresql"
+    service:
+      name: postgresql
+      state: started

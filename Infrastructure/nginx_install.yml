@@ -1,13 +1,11 @@
 ---
-- name: test
-  gather_facts: false
-  hosts: webservers
+- hosts: "webservers"
   vars:
     ansible_ssh_user: user
-  become: yes
+  become: true
 
   pre_tasks:
-    - name: Validating the ssh port is open and
+    - name: Validating the ssh port is open
       wait_for:
         host: "{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}"
         port: 22
@@ -16,7 +14,7 @@
         state: started
         search_regex: OpenSSH
 
-   tasks:
+  tasks:
   - name: "Install nginx"
     apt:
       name: nginx

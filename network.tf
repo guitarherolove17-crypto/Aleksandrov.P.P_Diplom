@@ -21,6 +21,14 @@ resource "yandex_vpc_subnet" "develop_b" {
   route_table_id = yandex_vpc_route_table.rt.id
 }
 
+resource "yandex_vpc_subnet" "public" {
+  name           = "public-subnet-${var.flow}-ru-central1-a"
+  zone           = "ru-central1-a"
+  network_id     = yandex_vpc_network.develop.id
+  v4_cidr_blocks = ["10.0.3.0/24"]
+  route_table_id = yandex_vpc_route_table.rt.id
+}
+
 #создаем NAT для выхода в интернет
 resource "yandex_vpc_gateway" "nat_gateway" {
   name = "fops-gateway-${var.flow}"
@@ -58,7 +66,6 @@ resource "yandex_vpc_security_group" "bastion" {
   }
 
 }
-
 
 resource "yandex_vpc_security_group" "LAN" {
   name       = "LAN-sg-${var.flow}"
@@ -112,5 +119,38 @@ resource "yandex_vpc_security_group" "web_sg" {
     from_port      = 0
     to_port        = 58840
   }
+}
 
+resource "yandex_vpc_security_group" "zabbix_sg" {
+  name       = "zabbix-sg-${var.flow}"
+  network_id = yandex_vpc_network.develop.id
+
+  ingress {
+    description    = "Zabbix Agent (agent → server)"
+    protocol       = "TCP"
+    port           = 10050
+    v4_cidr_blocks = ["10.0.0.0/8"]  # от агентов в приватной сети
+  }
+
+  ingress {
+    description    = "Zabbix Trapper (agent → server)"
+    protocol       = "TCP"
+    port           = 10051
+    v4_cidr_blocks = ["10.0.1.0/24", "10.0.2.0/24"]
+  }
+  
+  ingress {
+    description    = "Zabbix Web UI (HTTP)"
+    protocol       = "TCP"
+    port           = 80
+    v4_cidr_blocks = ["0.0.0.0/0"]   # публичный доступ к веб-интерфейсу
+  }
+
+  egress {
+    description    = "Allow all outbound"
+    protocol       = "ANY"
+    v4_cidr_blocks = ["0.0.0.0/0"]
+    from_port      = 0
+    to_port        = 65535
+  }
 }

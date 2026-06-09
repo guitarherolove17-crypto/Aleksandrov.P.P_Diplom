@@ -84,19 +84,33 @@ resource "yandex_vpc_security_group" "web_sg" {
   name       = "web-sg-${var.flow}"
   network_id = yandex_vpc_network.develop.id
 
-
-  ingress {
-    description    = "Allow HTTPS"
-    protocol       = "TCP"
-    port           = 443
-    v4_cidr_blocks = ["0.0.0.0/0"]
-  }
   ingress {
     description    = "Allow HTTP"
     protocol       = "TCP"
     port           = 80
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  ingress {
+    description    = "Allow HTTPS"
+    protocol       = "TCP"
+    port           = 443
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
 
+  ingress {
+    description    = "Allow health checks from load balancer"
+    protocol       = "TCP"
+    port           = 80
+    v4_cidr_blocks = ["198.18.235.0/24", "198.18.248.0/24"]  # диапазоны Yandex Cloud ALB health checks
+  }
+
+  egress {
+    description    = "Permit ANY outbound"
+    protocol       = "ANY"
+    v4_cidr_blocks = ["0.0.0.0/0"]
+    from_port      = 0
+    to_port        = 58840
+  }
 
 }

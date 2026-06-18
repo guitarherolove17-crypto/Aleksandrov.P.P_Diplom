@@ -109,22 +109,22 @@ resource "yandex_compute_instance" "web_b" {
 }
 
 resource "yandex_compute_instance" "web_zabbix" {
-  name        = "web_zabbix" #Имя ВМ в облачной консоли
-  hostname    = "web_zabbix" #формирует FDQN имя хоста, без hostname будет сгенрировано случаное имя.
+  name        = "web-zabbix" #Имя ВМ в облачной консоли
+  hostname    = "web-zabbix" #формирует FDQN имя хоста, без hostname будет сгенрировано случаное имя.
   platform_id = "standard-v3"
   zone        = "ru-central1-a" #зона ВМ должна совпадать с зоной subnet!!!
 
   resources {
     cores         = 2
-    memory        = 1
-    core_fraction = 20
+    memory        = 4
+    core_fraction = 50
   }
 
   boot_disk {
     initialize_params {
       image_id = data.yandex_compute_image.ubuntu_2204_lts.image_id
       type     = "network-hdd"
-      size     = 10
+      size     = 20
     }
   }
 
@@ -139,13 +139,13 @@ resource "yandex_compute_instance" "web_zabbix" {
     subnet_id          = yandex_vpc_subnet.public.id
     nat                = true
     # security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.web_sg.id] # Оригинальный вариант
-    security_group_ids = [yandex_vpc_security_group.zabbix_sg.id]
+    security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.zabbix_sg.id]
   }
 }
 
 resource "yandex_compute_instance" "web_kibana" {
-  name        = "web_kibana" #Имя ВМ в облачной консоли
-  hostname    = "web_kibana" #формирует FDQN имя хоста, без hostname будет сгенрировано случаное имя.
+  name        = "web-kibana" #Имя ВМ в облачной консоли
+  hostname    = "web-kibana" #формирует FDQN имя хоста, без hostname будет сгенрировано случаное имя.
   platform_id = "standard-v3"
   zone        = "ru-central1-a" #зона ВМ должна совпадать с зоной subnet!!!
 
@@ -173,14 +173,14 @@ resource "yandex_compute_instance" "web_kibana" {
   network_interface {
     subnet_id          = yandex_vpc_subnet.public.id
     nat                = true
-    security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.web_sg.id]
+    security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.kibana_sg.id]
 
   }
 }
 
 resource "yandex_compute_instance" "web_elasticsearch" {
-  name        = "web_elasticsearch" #Имя ВМ в облачной консоли
-  hostname    = "web_elasticsearch" #формирует FDQN имя хоста, без hostname будет сгенрировано случаное имя.
+  name        = "web-elasticsearch" #Имя ВМ в облачной консоли
+  hostname    = "web-elasticsearch" #формирует FDQN имя хоста, без hostname будет сгенрировано случаное имя.
   platform_id = "standard-v3"
   zone        = "ru-central1-b" #зона ВМ должна совпадать с зоной subnet!!!
 
@@ -208,24 +208,36 @@ resource "yandex_compute_instance" "web_elasticsearch" {
   network_interface {
     subnet_id          = yandex_vpc_subnet.develop_b.id
     nat                = false
-    security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.web_sg.id]
-
+    security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.elasticsearch_sg.id]
   }
 }
 
 resource "local_file" "inventory" {
   content  = <<-XYZ
+
   [bastion]
   ${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}
 
   [zabbix]
   ${yandex_compute_instance.web_zabbix.network_interface.0.ip_address}
 
+  [zabbix:vars]
+  ansible_user = user
+  ansible_ssh_common_args='-o ProxyCommand="ssh -p 22 -W %h:%p -q user@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}"'
+
   [elasticsearch]
   ${yandex_compute_instance.web_elasticsearch.network_interface.0.ip_address}
   
+  [elasticsearch:vars]
+  ansible_user = user
+  ansible_ssh_common_args='-o ProxyCommand="ssh -p 22 -W %h:%p -q user@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}"'
+
   [kibana]
   ${yandex_compute_instance.web_kibana.network_interface.0.ip_address}
+
+  [kibana:vars]
+  ansible_user = user
+  ansible_ssh_common_args='-o ProxyCommand="ssh -p 22 -W %h:%p -q user@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}"'
 
   [webservers]
   ${yandex_compute_instance.web_a.network_interface.0.ip_address}
@@ -235,5 +247,6 @@ resource "local_file" "inventory" {
   ansible_user = user
   ansible_ssh_common_args='-o ProxyCommand="ssh -p 22 -W %h:%p -q user@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}"'
   XYZ
+
   filename = "./hosts.ini"
 }

@@ -154,3 +154,29 @@ resource "yandex_vpc_security_group" "zabbix_sg" {
     to_port        = 65535
   }
 }
+
+resource "yandex_vpc_security_group" "kibana_sg" {
+  name       = "kibana-sg-${var.flow}"
+  network_id = yandex_vpc_network.develop.id
+
+  ingress {
+    description    = "Kibana UI"
+    protocol       = "TCP"
+    port           = 5601
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
+
+}
+
+resource "yandex_vpc_security_group" "elasticsearch_sg" {
+  name       = "elasticsearch-sg-${var.flow}"
+  network_id = yandex_vpc_network.develop.id
+
+ingress {
+    description    = "Elasticsearch API"
+    protocol       = "TCP"
+    port           = 9200
+    v4_cidr_blocks = ["10.0.0.0/8"]  # приватная сеть
+  }
+
+}

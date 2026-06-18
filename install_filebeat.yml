@@ -1,0 +1,68 @@
+---
+- hosts: "webservers"
+  vars:
+    ansible_ssh_user: user
+    filebeat_version: "8.10"
+    # IP-адрес Elasticsearch (тот же, что и для Kibana)
+    elasticsearch_host: "10.0.2.19"   # замените на реальный приватный IP web_elasticsearch
+    elasticsearch_port: 9200
+
+  become: true
+
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - gnupg
+          - wget
+        state: present
+
+    - name: Add Elasticsearch GPG key
+      apt_key:
+        url: "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
+        state: present
+
+    - name: Add Filebeat repository
+      apt_repository:
+        repo: "deb https://artifacts.elastic.co/packages/{{ filebeat_version }}/apt stable main"
+        state: present
+        update_cache: yes
+
+    - name: Install Filebeat
+      apt:
+        name: filebeat
+        state: present
+
+    - name: Enable Nginx module for Filebeat
+      command: filebeat modules enable nginx
+      args:
+        creates: /etc/filebeat/modules.d/nginx.yml
+      notify: restart filebeat
+
+    - name: Configure Filebeat to send logs to Elasticsearch
+      template:
+        src: filebeat.yml.j2
+        dest: /etc/filebeat/filebeat.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart filebeat
+
+    - name: Start and enable Filebeat
+      service:
+        name: filebeat
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart filebeat
+      service:
+        name: filebeat
+        state: restarted

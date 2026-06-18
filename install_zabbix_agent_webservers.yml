@@ -1,0 +1,45 @@
+---
+- hosts: "webservers"
+  vars:
+    ansible_ssh_user: user
+    zabbix_server_ip: "10.0.2.27" 
+                      # "10.0.1.4"  - IP сервера web-a 
+                      # "10.0.2.27" - IP сервера web-b
+  become: true
+
+  tasks:
+    - name: Add Zabbix repository
+      shell: |
+        wget -O /tmp/zabbix-release.deb https://repo.zabbix.com/zabbix/6.4/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.4-1+ubuntu22.04_all.deb
+        dpkg -i /tmp/zabbix-release.deb
+        apt update
+      args:
+        creates: /etc/apt/sources.list.d/zabbix.list
+
+    - name: Install Zabbix Agent
+      apt:
+        name: zabbix-agent
+        state: present
+
+    - name: Configure Zabbix Agent
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: "^{{ item.key }}="
+        line: "{{ item.key }}={{ item.value }}"
+      loop:
+        - { key: "Server", value: "{{ zabbix_server_ip }}" }
+        - { key: "ServerActive", value: "{{ zabbix_server_ip }}" }
+        - { key: "Hostname", value: "{{ inventory_hostname }}" }
+      notify: restart zabbix-agent
+
+    - name: Start and enable Zabbix Agent
+      service:
+        name: zabbix-agent
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart zabbix-agent
+      service:
+        name: zabbix-agent
+        state: restarted

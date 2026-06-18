@@ -1,0 +1,36 @@
+---
+- hosts: "webservers"
+  vars:
+    ansible_ssh_user: user
+  become: true
+
+  pre_tasks:
+    - name: Validating the ssh port is open
+      wait_for:
+        host: "{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}"
+        port: 22
+        delay: 5
+        timeout: 300
+        state: started
+        search_regex: OpenSSH
+
+  tasks:
+  - name: "Install Nginx"
+    apt:
+      name: nginx
+      state: present
+      update_cache: yes
+      
+  - name: "Start Nginx"
+    service:
+      name: nginx
+      state: started
+      enabled: yes 
+
+  - name: Copy static website files
+    copy:
+      src: ./site/   # локальная папка с индексом и стилями
+      dest: /var/www/html/
+      owner: www-data
+      group: www-data
+      mode: '0644'

@@ -1,0 +1,27 @@
+---
+- hosts: "zabbix"
+  vars:
+    ansible_ssh_user: user
+  become: true
+
+  pre_tasks:
+    - name: Validating the ssh port is open
+      wait_for:
+        host: "{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}"
+        port: 22
+        delay: 5
+        timeout: 300
+        state: started
+        search_regex: OpenSSH
+
+  tasks:
+  - name: "Install Zabbix Server"
+    apt:
+    name: zabbix-server-mysql
+    state: present
+
+  - name: "Start Zabbix"
+    service:
+      name: zabbix
+      state: started
+      enabled: yes

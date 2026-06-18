@@ -1,0 +1,81 @@
+---
+- hosts: "elasticsearch"
+  vars:
+    ansible_ssh_user: user
+    es_version: "8.10"          # Последняя стабильная версия
+    es_cluster_name: "my-cluster"
+    es_node_name: "node-1"
+
+    # Используем внутренний IP хоста (узнаётся автоматически)
+    es_network_host: "0.0.0.0"   # слушаем на всех интерфейсах (или укажите приватный IP)
+    es_http_port: 9200
+    
+    # Отключаем безопасность для простоты (только для лабораторной работы)
+    es_xpack_security_enabled: false
+
+  become: true
+
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - gnupg
+          - wget
+        state: present
+
+    - name: Add Elasticsearch GPG key
+      apt_key:
+        url: "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
+        state: present
+
+    - name: Add Elasticsearch repository
+      apt_repository:
+        repo: "deb https://artifacts.elastic.co/packages/{{ es_version }}/apt stable main"
+        state: present
+        update_cache: yes
+
+    - name: Install Elasticsearch
+      apt:
+        name: elasticsearch
+        state: present
+
+    - name: Configure Elasticsearch
+      template:
+        src: elasticsearch.yml.j2
+        dest: /etc/elasticsearch/elasticsearch.yml
+        owner: root
+        group: elasticsearch
+        mode: '0644'
+      notify: restart elasticsearch
+
+    - name: Set JVM heap size (optional, adjust as needed)
+      lineinfile:
+        path: /etc/elasticsearch/jvm.options
+        regexp: "^-Xms"
+        line: "-Xms512m"
+      notify: restart elasticsearch
+    - name: Set JVM max heap size
+      lineinfile:
+        path: /etc/elasticsearch/jvm.options
+        regexp: "^-Xmx"
+        line: "-Xmx512m"
+      notify: restart elasticsearch
+
+    - name: Start and enable Elasticsearch
+      service:
+        name: elasticsearch
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart elasticsearch
+      service:
+        name: elasticsearch
+        state: restarted

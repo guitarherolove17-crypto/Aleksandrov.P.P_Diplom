@@ -1,0 +1,65 @@
+---
+- hosts: "kibana"
+  vars:
+    ansible_ssh_user: user
+    kibana_version: "8.10"
+    
+    # IP-адрес сервера Elasticsearch (укажите из файла hosts.ini после развёртывания)
+    elasticsearch_host: "10.0.2.19"   # замените на реальный приватный IP web_elasticsearch
+    elasticsearch_port: 9200
+    kibana_port: 5601
+    kibana_host: "0.0.0.0"           # слушаем на всех интерфейсах
+
+  become: true
+
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - gnupg
+          - wget
+        state: present
+
+    - name: Add Elasticsearch GPG key
+      apt_key:
+        url: "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
+        state: present
+
+    - name: Add Kibana repository
+      apt_repository:
+        repo: "deb https://artifacts.elastic.co/packages/{{ kibana_version }}/apt stable main"
+        state: present
+        update_cache: yes
+
+    - name: Install Kibana
+      apt:
+        name: kibana
+        state: present
+
+    - name: Configure Kibana
+      template:
+        src: kibana.yml.j2
+        dest: /etc/kibana/kibana.yml
+        owner: root
+        group: kibana
+        mode: '0644'
+      notify: restart kibana
+
+    - name: Start and enable Kibana
+      service:
+        name: kibana
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart Kibana
+      service:
+        name: kibana
+        state: restarted

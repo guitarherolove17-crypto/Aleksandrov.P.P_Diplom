@@ -1,0 +1,181 @@
+---
+- hosts: "zabbix"
+  vars:
+    ansible_ssh_user: user
+
+    # Параметры подключения к БД
+    zabbix_db_name: zabbix
+    zabbix_db_user: zabbix
+    zabbix_db_password: "1234"
+
+    # Версия Zabbix и путь к скриптам
+    zabbix_version: "6.4"
+    postgresql_version: 14
+
+    # Настройки веб-интерфейса
+    web_domain: "{{ ansible_default_ipv4.address }}"  # или замените на свой домен/IP
+    admin_email: "admin@example.com"
+
+  become: true
+
+  pre_tasks:
+    - name: Validate SSH port is open
+      wait_for:
+        host: "{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}"
+        port: 22
+        delay: 5
+        timeout: 300
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  tasks:
+    # 1. Установка PostgreSQL
+    - name: Install PostgreSQL and contrib packages
+      apt:
+        name:
+          - postgresql-{{ postgresql_version }}
+          - postgresql-contrib
+          - python3-psycopg2  # нужно для модулей Ansible postgresql_*
+          - acl
+        state: present
+
+    - name: Start and enable PostgreSQL
+      service:
+        name: postgresql
+        state: started
+        enabled: yes
+
+    # 2. Создание БД и пользователя для Zabbix
+    - name: Create Zabbix DB User
+      become_user: postgres
+      postgresql_user:
+        name: "{{ zabbix_db_user }}"
+        password: "{{ zabbix_db_password }}"
+        encrypted: yes
+        state: present
+
+    - name: Create Zabbix DB
+      become_user: postgres
+      postgresql_db:
+        name: "{{ zabbix_db_name }}"
+        owner: "{{ zabbix_db_user }}"
+        encoding: UTF-8
+        state: present
+
+    # 3. Добавление официального репозитория Zabbix
+    - name: Download Zabbix release package
+      get_url:
+        url: "https://repo.zabbix.com/zabbix/{{ zabbix_version }}/ubuntu/pool/main/z/zabbix-release/zabbix-release_{{ zabbix_version }}-1+ubuntu{{ ansible_distribution_version }}_all.deb"
+        dest: "/tmp/zabbix-release.deb"
+        mode: 0644
+
+    - name: Install Zabbix Repository
+      apt:
+        deb: "/tmp/zabbix-release.deb"
+        state: present
+
+    - name: Update apt cache with Zabbix Repository
+      apt:
+        update_cache: yes
+
+    # 4. Установка сервера Zabbix, агента, фронтенда, Nginx и PHP
+    - name: Install Zabbix server (PostgreSQL version), agent, frontend, Nginx, PHP
+      apt:
+        name:
+          - zabbix-server-pgsql
+          - zabbix-agent
+          - zabbix-frontend-php
+          - zabbix-nginx-conf
+          - zabbix-sql-scripts
+          - php8.1-pgsql
+          - php8.1-fpm
+          - php8.1-ldap
+          - php8.1-bcmath
+          - php8.1-mbstring
+          - php8.1-xml
+          - php8.1-gd
+        state: present
+
+    # 5. Импорт начальной схемы базы данных
+    - name: Check if schema already imported
+      become_user: postgres
+      postgresql_query:
+        db: "{{ zabbix_db_name }}"
+        query: "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname='public' AND tablename='hosts')"
+        login_user: postgres
+      register: schema_check
+
+    - name: Import Zabbix database schema
+      when: not schema_check.query_result[0].exists
+      shell: |
+        zcat /usr/share/zabbix-sql-scripts/postgresql/server.sql.gz | psql -h localhost -U {{ zabbix_db_user }} -d {{ zabbix_db_name }}
+      become: yes
+      become_user: postgres
+      environment:
+        PGPASSWORD: "{{ zabbix_db_password }}"
+
+    # 6. Конфигурация Zabbix Server
+    - name: Configure Zabbix server database connection
+      lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: "^{{ item.key }}="
+        line: "{{ item.key }}={{ item.value }}"
+      loop:
+        - { key: "DBHost", value: "localhost" }
+        - { key: "DBName", value: "{{ zabbix_db_name }}" }
+        - { key: "DBUser", value: "{{ zabbix_db_user }}" }
+        - { key: "DBPassword", value: "{{ zabbix_db_password }}" }
+      notify: restart zabbix-server
+
+    # 7. Конфигурация Nginx для Zabbix
+    - name: Configure Nginx server block for Zabbix
+      template:
+        src: zabbix_nginx.conf.j2
+        dest: /etc/nginx/sites-enabled/zabbix.conf
+        mode: 0644
+      notify: restart nginx
+
+    - name: Remove default Nginx site (if present)
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: restart nginx
+
+    # 8. Настройка PHP-FPM (таймзона, память и т.д.)
+    - name: Set PHP timezone
+      lineinfile:
+        path: /etc/php/8.1/fpm/php.ini
+        regexp: '^;?date.timezone ='
+        line: 'date.timezone = {{ ansible_date_time.tz }}'
+      notify: restart php-fpm
+
+    # 9. Запуск и включение сервисов
+    - name: Start and enable services
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - zabbix-server
+        - zabbix-agent
+        - php8.1-fpm
+        - nginx
+
+  handlers:
+    - name: restart zabbix-server
+      service:
+        name: zabbix-server
+        state: restarted
+
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+
+    - name: restart php-fpm
+      service:
+        name: php8.1-fpm
+        state: restarted

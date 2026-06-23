@@ -9,17 +9,10 @@ filebeat.modules:
 
 output.elasticsearch:
   hosts: ["http://{{ elasticsearch_host }}:{{ elasticsearch_port }}"]
-  # Если отключена безопасность (xpack.security.enabled: false), достаточно так
-  # При необходимости можно добавить username/password, но мы отключили security
 
 setup.kibana:
-  host: "http://{{ elasticsearch_host }}:5601"   # опционально, для установки дашбордов
+  host: "http://{{ elasticsearch_host }}:5601"   # можно указать IP Kibana, но не обязательно
 
-# Чтобы не использовать шаблоны индексов по умолчанию, можно явно указать:
-# setup.template.name: "nginx"
-# setup.template.pattern: "nginx-*"
-
-# Включите логирование самого Filebeat (по желанию)
 logging.level: info
 logging.to_files: true
 logging.files:

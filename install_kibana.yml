@@ -5,7 +5,7 @@
     kibana_version: "8.10"
     
     # IP-адрес сервера Elasticsearch (укажите из файла hosts.ini после развёртывания)
-    elasticsearch_host: "10.0.2.19"   # замените на реальный приватный IP web_elasticsearch
+    elasticsearch_host: "10.0.2.32"   # замените на реальный приватный IP web_elasticsearch
     elasticsearch_port: 9200
     kibana_port: 5601
     kibana_host: "0.0.0.0"           # слушаем на всех интерфейсах
@@ -25,16 +25,12 @@
           - apt-transport-https
           - gnupg
           - wget
+          - net-tools
         state: present
 
-    - name: Add Elasticsearch GPG key
-      apt_key:
-        url: "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
-        state: present
-
-    - name: Add Kibana repository
+    - name: Add Kibana repository from Yandex mirror
       apt_repository:
-        repo: "deb https://artifacts.elastic.co/packages/{{ kibana_version }}/apt stable main"
+        repo: "deb [trusted=yes] https://mirror.yandex.ru/mirrors/elastic/8/ stable main"
         state: present
         update_cache: yes
 
@@ -59,7 +55,7 @@
         enabled: yes
 
   handlers:
-    - name: restart Kibana
+    - name: restart kibana
       service:
         name: kibana
         state: restarted

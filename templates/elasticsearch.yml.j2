@@ -4,3 +4,7 @@ network.host: {{ es_network_host }}
 http.port: {{ es_http_port }}
 discovery.type: single-node
 xpack.security.enabled: {{ es_xpack_security_enabled }}
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+xpack.security.transport.ssl.enabled: false
+xpack.security.http.ssl.enabled: false

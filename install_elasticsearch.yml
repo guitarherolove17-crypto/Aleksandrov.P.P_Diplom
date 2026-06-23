@@ -2,16 +2,13 @@
 - hosts: "elasticsearch"
   vars:
     ansible_ssh_user: user
-    es_version: "8.10"          # Последняя стабильная версия
+    es_version: "8.x"  # Используем основную ветку
     es_cluster_name: "my-cluster"
     es_node_name: "node-1"
-
-    # Используем внутренний IP хоста (узнаётся автоматически)
-    es_network_host: "0.0.0.0"   # слушаем на всех интерфейсах (или укажите приватный IP)
+    es_network_host: "0.0.0.0"
     es_http_port: 9200
-    
-    # Отключаем безопасность для простоты (только для лабораторной работы)
     es_xpack_security_enabled: false
+    es_install_dir: "/usr/share/elasticsearch"
 
   become: true
 
@@ -26,18 +23,22 @@
       apt:
         name:
           - apt-transport-https
-          - gnupg
           - wget
+          - openjdk-17-jre-headless
         state: present
 
-    - name: Add Elasticsearch GPG key
-      apt_key:
-        url: "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
-        state: present
+    - name: Remove official Elasticsearch repository
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/elastic-8.x.list
+        - /etc/apt/sources.list.d/elasticsearch-8.x.list
+      ignore_errors: yes
 
-    - name: Add Elasticsearch repository
+    - name: Add Elasticsearch repository from Yandex mirror
       apt_repository:
-        repo: "deb https://artifacts.elastic.co/packages/{{ es_version }}/apt stable main"
+        repo: "deb [trusted=yes] https://mirror.yandex.ru/mirrors/elastic/8/ stable main"
         state: present
         update_cache: yes
 
@@ -55,12 +56,13 @@
         mode: '0644'
       notify: restart elasticsearch
 
-    - name: Set JVM heap size (optional, adjust as needed)
+    - name: Set JVM heap size
       lineinfile:
         path: /etc/elasticsearch/jvm.options
         regexp: "^-Xms"
         line: "-Xms512m"
       notify: restart elasticsearch
+
     - name: Set JVM max heap size
       lineinfile:
         path: /etc/elasticsearch/jvm.options

@@ -35,6 +35,7 @@ resource "yandex_compute_instance" "bastion" {
     nat                = true
     security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.bastion.id]
   }
+  allow_stopping_for_update = true
 }
 
 
@@ -71,6 +72,7 @@ resource "yandex_compute_instance" "web_a" {
     nat                = false
     security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.web_sg.id]
   }
+  allow_stopping_for_update = true
 }
 
 resource "yandex_compute_instance" "web_b" {
@@ -106,6 +108,7 @@ resource "yandex_compute_instance" "web_b" {
     security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.web_sg.id]
 
   }
+  allow_stopping_for_update = true
 }
 
 resource "yandex_compute_instance" "web_zabbix" {
@@ -126,6 +129,7 @@ resource "yandex_compute_instance" "web_zabbix" {
       type     = "network-hdd"
       size     = 20
     }
+
   }
 
   metadata = {
@@ -141,6 +145,7 @@ resource "yandex_compute_instance" "web_zabbix" {
     # security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.web_sg.id] # Оригинальный вариант
     security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.zabbix_sg.id]
   }
+  allow_stopping_for_update = true
 }
 
 resource "yandex_compute_instance" "web_kibana" {
@@ -174,8 +179,8 @@ resource "yandex_compute_instance" "web_kibana" {
     subnet_id          = yandex_vpc_subnet.public.id
     nat                = true
     security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.kibana_sg.id]
-
   }
+  allow_stopping_for_update = true
 }
 
 resource "yandex_compute_instance" "web_elasticsearch" {
@@ -186,7 +191,7 @@ resource "yandex_compute_instance" "web_elasticsearch" {
 
   resources {
     cores         = 2
-    memory        = 1
+    memory        = 2
     core_fraction = 20
   }
 
@@ -210,6 +215,7 @@ resource "yandex_compute_instance" "web_elasticsearch" {
     nat                = false
     security_group_ids = [yandex_vpc_security_group.LAN.id, yandex_vpc_security_group.elasticsearch_sg.id]
   }
+    allow_stopping_for_update = true
 }
 
 resource "local_file" "inventory" {

@@ -29,6 +29,14 @@ resource "yandex_vpc_subnet" "public" {
   route_table_id = yandex_vpc_route_table.rt.id
 }
 
+resource "yandex_vpc_subnet" "public_b" {
+  name           = "public-subnet-${var.flow}-ru-central1-b"
+  zone           = "ru-central1-b"
+  network_id     = yandex_vpc_network.develop.id
+  v4_cidr_blocks = ["10.0.4.0/24"]
+  route_table_id = yandex_vpc_route_table.rt.id
+}
+
 #создаем NAT для выхода в интернет
 resource "yandex_vpc_gateway" "nat_gateway" {
   name = "fops-gateway-${var.flow}"
@@ -163,6 +171,12 @@ resource "yandex_vpc_security_group" "kibana_sg" {
     description    = "Kibana UI"
     protocol       = "TCP"
     port           = 5601
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
+    ingress {
+    description    = "Kibana UI"
+    protocol       = "TCP"
+    port           = 5602
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
 

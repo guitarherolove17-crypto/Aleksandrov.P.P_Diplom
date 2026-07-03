@@ -28,7 +28,7 @@ resource "yandex_compute_instance" "bastion" {
     serial-port-enable = 1
   }
 
-  scheduling_policy { preemptible = true }
+  # # scheduling_policy { preemptible = true } # Прерываемость машины # Прерываемость машины
 
   network_interface {
     subnet_id          = yandex_vpc_subnet.develop_a.id #зона ВМ должна совпадать с зоной subnet!!!
@@ -48,7 +48,7 @@ resource "yandex_compute_instance" "web_a" {
 
   resources {
     cores         = 2
-    memory        = 1
+    memory        = 2
     core_fraction = 20
   }
 
@@ -65,7 +65,7 @@ resource "yandex_compute_instance" "web_a" {
     serial-port-enable = 1
   }
 
-  scheduling_policy { preemptible = true }
+  # scheduling_policy { preemptible = true } # Прерываемость машины
 
   network_interface {
     subnet_id          = yandex_vpc_subnet.develop_a.id
@@ -83,7 +83,7 @@ resource "yandex_compute_instance" "web_b" {
 
   resources {
     cores         = 2
-    memory        = 1
+    memory        = 2
     core_fraction = 20
   }
 
@@ -100,7 +100,7 @@ resource "yandex_compute_instance" "web_b" {
     serial-port-enable = 1
   }
 
-  scheduling_policy { preemptible = true }
+  # scheduling_policy { preemptible = true } # Прерываемость машины
 
   network_interface {
     subnet_id          = yandex_vpc_subnet.develop_b.id
@@ -137,7 +137,7 @@ resource "yandex_compute_instance" "web_zabbix" {
     serial-port-enable = 1
   }
 
-  scheduling_policy { preemptible = true }
+  # scheduling_policy { preemptible = true } # Прерываемость машины
 
   network_interface {
     subnet_id          = yandex_vpc_subnet.public.id
@@ -156,7 +156,7 @@ resource "yandex_compute_instance" "web_kibana" {
 
   resources {
     cores         = 2
-    memory        = 1
+    memory        = 2
     core_fraction = 20
   }
 
@@ -173,7 +173,7 @@ resource "yandex_compute_instance" "web_kibana" {
     serial-port-enable = 1
   }
 
-  scheduling_policy { preemptible = true }
+  # scheduling_policy { preemptible = true } # Прерываемость машины
 
   network_interface {
     subnet_id          = yandex_vpc_subnet.public.id
@@ -208,7 +208,7 @@ resource "yandex_compute_instance" "web_elasticsearch" {
     serial-port-enable = 1
   }
 
-  scheduling_policy { preemptible = true }
+  # scheduling_policy { preemptible = true } # Прерываемость машины
 
   network_interface {
     subnet_id          = yandex_vpc_subnet.develop_b.id
@@ -225,29 +225,29 @@ resource "local_file" "inventory" {
   ${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}
 
   [zabbix]
-  ${yandex_compute_instance.web_zabbix.network_interface.0.ip_address}
+  ${yandex_compute_instance.web_zabbix.fqdn}
 
   [zabbix:vars]
   ansible_user = user
   ansible_ssh_common_args='-o ProxyCommand="ssh -p 22 -W %h:%p -q user@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}"'
 
   [elasticsearch]
-  ${yandex_compute_instance.web_elasticsearch.network_interface.0.ip_address}
+  ${yandex_compute_instance.web_elasticsearch.fqdn}
   
   [elasticsearch:vars]
   ansible_user = user
   ansible_ssh_common_args='-o ProxyCommand="ssh -p 22 -W %h:%p -q user@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}"'
 
   [kibana]
-  ${yandex_compute_instance.web_kibana.network_interface.0.ip_address}
+  ${yandex_compute_instance.web_kibana.fqdn}
 
   [kibana:vars]
   ansible_user = user
   ansible_ssh_common_args='-o ProxyCommand="ssh -p 22 -W %h:%p -q user@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}"'
 
   [webservers]
-  ${yandex_compute_instance.web_a.network_interface.0.ip_address}
-  ${yandex_compute_instance.web_b.network_interface.0.ip_address}
+  ${yandex_compute_instance.web_a.fqdn}
+  ${yandex_compute_instance.web_b.fqdn}
 
   [webservers:vars]
   ansible_user = user

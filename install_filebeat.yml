@@ -2,7 +2,7 @@
 - hosts: "webservers"
   vars:
     ansible_ssh_user: user
-    elasticsearch_host: "10.0.2.32"   # IP Elasticsearch
+    elasticsearch_host: "10.0.2.13"   # IP Elasticsearch
     elasticsearch_port: 9200
 
   become: true

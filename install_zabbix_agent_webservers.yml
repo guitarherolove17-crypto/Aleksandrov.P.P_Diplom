@@ -2,9 +2,8 @@
 - hosts: "webservers"
   vars:
     ansible_ssh_user: user
-    zabbix_server_ip: "10.0.2.27" 
-                      # "10.0.1.4"  - IP сервера web-a 
-                      # "10.0.2.27" - IP сервера web-b
+    zabbix_server_ip: "10.0.3.33"
+
   become: true
 
   tasks:

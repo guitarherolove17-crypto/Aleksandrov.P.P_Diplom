@@ -5,9 +5,11 @@
     kibana_version: "8.10"
     
     # IP-адрес сервера Elasticsearch (укажите из файла hosts.ini после развёртывания)
-    elasticsearch_host: "10.0.2.32"   # замените на реальный приватный IP web_elasticsearch
+    # Эти настройки потом лежат на web-kibana по пути /etc/kibana/kibana.yml
+    elasticsearch_host: "10.0.2.13"  
     elasticsearch_port: 9200
-    kibana_port: 5601
+
+    kibana_port: 5601                
     kibana_host: "0.0.0.0"           # слушаем на всех интерфейсах
 
   become: true
